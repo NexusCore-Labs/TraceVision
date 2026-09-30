@@ -14,11 +14,6 @@ import tempfile
 
 from pathlib import Path
 from typing import Optional, List
-from pipeline import _run_search_pipeline
-from fastapi import FastAPI, HTTPException, Query, Form, File, UploadFile, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
-from pydantic import BaseModel, Field
 
 # ---------------------------------------------------------------------------
 # Ensure backend/ is importable regardless of CWD
@@ -26,6 +21,12 @@ from pydantic import BaseModel, Field
 _backend_dir = Path(__file__).resolve().parent
 if str(_backend_dir) not in sys.path:
     sys.path.insert(0, str(_backend_dir))
+
+from pipeline import _run_search_pipeline
+from fastapi import FastAPI, HTTPException, Query, Form, File, UploadFile, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 # Import teammate's temporal smoother
 from smoothing import TemporalSmoother, ClipRange
