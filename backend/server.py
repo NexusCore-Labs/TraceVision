@@ -162,6 +162,19 @@ def _pipeline_result_to_response(video_id: str, pipeline_result: dict) -> dict:
             "confidence": round(c.get("avg_confidence", 0.0), 3),
         })
 
+    if not matches and per_frame:
+        for idx, f in enumerate(per_frame):
+            matches.append({
+                "id": f"match-{idx + 1:03d}",
+                "start_time": format_timestamp(f["start_seconds"]),
+                "end_time": format_timestamp(f["end_seconds"]),
+                "start_seconds": round(f["start_seconds"], 2),
+                "end_seconds": round(f["end_seconds"], 2),
+                "category": f.get("category", "SECURITY"),
+                "description": f.get("description", "Verified match."),
+                "confidence": round(f.get("confidence", 0.9), 3),
+            })
+
     return {
         "status": "completed",
         "progress": 100,
@@ -241,7 +254,7 @@ async def analyze_video_real(
     if not monitor.is_safe_to_proceed(required_mb=500):
         raise HTTPException(status_code=503, detail="VRAM ceiling exceeded. Try again later.")
 
-    pipeline_result = await _run_search_pipeline(target_path, query, smoother)
+    pipeline_result = await _run_search_pipeline(target_path, query, smoother, video_duration=duration)
     return _pipeline_result_to_response(resolved_video_id, pipeline_result)
 
 @app.api_route("/api/analyze/stream", methods=["GET", "POST"])

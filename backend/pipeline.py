@@ -67,28 +67,36 @@ def _get_video_duration(video_path: str) -> float:
         return 0.0
 
 
-def _adaptive_fps(duration_sec: float) -> float:
+def _adaptive_fps(duration_sec: float, target_frames: int = 50) -> float:
     """
-    Choose extraction FPS to cap total frames to ~25 frames,
-    ensuring lightning fast CPU extraction and CLIP scoring.
+    Choose extraction FPS to sample target_frames evenly across duration.
+    For a 5-min video (300s): ~0.167 fps (1 frame every 6s).
+    For a 1-min video (60s): ~0.833 fps (1 frame every 1.2s).
     """
     if duration_sec <= 0:
-        return 1.0
-    fps = 25.0 / max(duration_sec, 1.0)
-    return round(max(min(fps, 1.0), 0.05), 3)
+        return 0.5
+    fps = target_frames / max(duration_sec, 1.0)
+    return round(max(min(fps, 2.0), 0.01), 4)
 
 
-def _extract_frames_ffmpeg(video_path: str, output_dir: str, fps: Optional[float] = None) -> Dict[float, str]:
+def _extract_frames_ffmpeg(
+    video_path: str,
+    output_dir: str,
+    fps: Optional[float] = None,
+    duration_sec: Optional[float] = None,
+    target_frames: int = 50,
+) -> Dict[float, str]:
     """
-    Extract frames using native FFmpeg.
+    Extract high-fidelity 1024px frames using native FFmpeg.
     """
-    duration_sec = _get_video_duration(video_path)
+    if duration_sec is None or duration_sec <= 0:
+        duration_sec = _get_video_duration(video_path)
     if fps is None:
-        fps = _adaptive_fps(duration_sec)
+        fps = _adaptive_fps(duration_sec, target_frames=target_frames)
 
     logger.info(
         f"[Frame Extraction] duration={duration_sec:.1f}s, adaptive_fps={fps}, "
-        f"estimated_frames={int(duration_sec * fps)}"
+        f"target_frames={target_frames}"
     )
 
     output_pattern = os.path.join(output_dir, "frame_%04d.jpg")
@@ -98,10 +106,10 @@ def _extract_frames_ffmpeg(video_path: str, output_dir: str, fps: Optional[float
         "ffmpeg", "-y",
         "-skip_frame", "nokey",
         "-i", video_path,
-        "-vf", f"fps={fps},scale='min(512,iw)':-2",
+        "-vf", f"fps={fps},scale='min(1024,iw)':-2",
         "-vsync", "vfr",
-        "-vframes", "25",
-        "-q:v", "4",
+        "-vframes", str(target_frames),
+        "-q:v", "3",
         "-f", "image2",
         output_pattern,
     ]
@@ -110,9 +118,9 @@ def _extract_frames_ffmpeg(video_path: str, output_dir: str, fps: Optional[float
         "ffmpeg", "-y",
         "-threads", "2",
         "-i", video_path,
-        "-vf", f"fps={fps},scale='min(512,iw)':-2",
-        "-vframes", "25",
-        "-q:v", "4",
+        "-vf", f"fps={fps},scale='min(1024,iw)':-2",
+        "-vframes", str(target_frames),
+        "-q:v", "3",
         "-f", "image2",
         output_pattern,
     ]
@@ -133,20 +141,25 @@ def _extract_frames_ffmpeg(video_path: str, output_dir: str, fps: Optional[float
         raise RuntimeError("FFmpeg not found in PATH. Install FFmpeg and ensure it is accessible.")
 
     # Reconstruct {timestamp_seconds: filepath} from the written files.
-    # FFmpeg names frames starting from frame_0001.jpg (1-indexed).
-    # timestamp = (frame_number - 1) / fps
     timestamp_to_path: Dict[float, str] = {}
     frame_files = sorted(
         f for f in os.listdir(output_dir)
         if f.startswith("frame_") and f.endswith(".jpg")
     )
 
-    for frame_file in frame_files:
+    num_frames = len(frame_files)
+    for idx, frame_file in enumerate(frame_files):
         try:
             frame_number = int(frame_file.replace("frame_", "").replace(".jpg", ""))
         except ValueError:
-            continue
-        timestamp_seconds = round((frame_number - 1) / fps, 2)
+            frame_number = idx + 1
+        
+        # Linearly space timestamps across duration_sec if known
+        if duration_sec > 0 and num_frames > 1:
+            timestamp_seconds = round(idx * (duration_sec / max(num_frames - 1, 1)), 2)
+        else:
+            timestamp_seconds = round((frame_number - 1) / fps, 2)
+
         timestamp_to_path[timestamp_seconds] = os.path.join(output_dir, frame_file)
 
     logger.info(f"[Frame Extraction] Wrote {len(timestamp_to_path)} frames to {output_dir}")
@@ -225,20 +238,14 @@ async def _translate_query_for_clip(raw_query: str) -> str:
 # Main Pipeline
 # ---------------------------------------------------------------------------
 
-async def _run_search_pipeline(video_path: str, raw_query: str, smoother: "TemporalSmoother") -> Dict[str, Any]:
+async def _run_search_pipeline(
+    video_path: str,
+    raw_query: str,
+    smoother: "TemporalSmoother",
+    video_duration: Optional[float] = None,
+) -> Dict[str, Any]:
     """
     Four-Stage Multimodal RAG search pipeline for TraceVision.
-
-    This is the function api.py imports via:
-        from pipeline import _run_search_pipeline
-    Do NOT rename this — api.py's import binds to this exact name.
-
-    Flow:
-      1. LLM Query Translation     -> CLIP-optimized visual co-occurrence caption
-      2. FFmpeg CUDA Frame Extract -> High-fidelity 1024px frames (GPU-accelerated)
-      3. CLIP Retrieval            -> Timeline-bucketed peak candidates
-      4. Gemini Validation         -> Spatial forensic auditor confirms each frame
-      5. Temporal Smoothing        -> Only Gemini-validated timestamps go in
     """
     temp_frames_dir = tempfile.mkdtemp(prefix="tracevision_frames_")
 
@@ -250,15 +257,23 @@ async def _run_search_pipeline(video_path: str, raw_query: str, smoother: "Tempo
         logger.info(f"[Stage 1] Raw query: '{raw_query}' -> CLIP query: '{clip_query}'")
 
         # ------------------------------------------------------------
-        # STAGE 2: FFmpeg CUDA Frame Extraction
+        # STAGE 2: High-Fidelity 1024px Frame Extraction
         # ------------------------------------------------------------
-        # Compute adaptive_fps here so we can pass it to the CLIP engine.
-        # evaluate_video_frames needs the exact fps to reconstruct timestamps
-        # from the sequential frame_%04d.jpg filenames FFmpeg writes.
-        video_duration_sec = _get_video_duration(video_path)
-        adaptive_fps = _adaptive_fps(video_duration_sec)
+        if video_duration and video_duration > 0:
+            video_duration_sec = video_duration
+        else:
+            video_duration_sec = _get_video_duration(video_path)
 
-        timestamp_to_path = _extract_frames_ffmpeg(video_path, temp_frames_dir, fps=adaptive_fps)
+        TARGET_FRAMES = 60
+        adaptive_fps = _adaptive_fps(video_duration_sec, target_frames=TARGET_FRAMES)
+
+        timestamp_to_path = _extract_frames_ffmpeg(
+            video_path,
+            temp_frames_dir,
+            fps=adaptive_fps,
+            duration_sec=video_duration_sec,
+            target_frames=TARGET_FRAMES,
+        )
 
         if not timestamp_to_path:
             raise RuntimeError("No frames were extracted from the video — check the source file.")
@@ -266,25 +281,18 @@ async def _run_search_pipeline(video_path: str, raw_query: str, smoother: "Tempo
         # ------------------------------------------------------------
         # STAGE 3: Timeline Candidate Selection
         # ------------------------------------------------------------
-        # Sort extracted frames chronologically
         extracted_timestamps = sorted(timestamp_to_path.keys())
         if not extracted_timestamps:
             return {"query": raw_query, "clip_query": clip_query, "matches": [], "clips": []}
 
-        # Select up to 25 uniformly spaced candidate frames across the timeline
-        if len(extracted_timestamps) <= 25:
-            candidate_timestamps = extracted_timestamps
-        else:
-            step = len(extracted_timestamps) / 25
-            candidate_timestamps = [extracted_timestamps[int(i * step)] for i in range(25)]
-
+        # Send all extracted timeline frames directly to Gemini
         candidate_frames_for_audit = [
             {
                 "timestamp_seconds": ts,
                 "confidence": 0.85,
                 "frame_path": timestamp_to_path[ts],
             }
-            for ts in candidate_timestamps
+            for ts in extracted_timestamps
         ]
 
         logger.info(
@@ -320,7 +328,7 @@ async def _run_search_pipeline(video_path: str, raw_query: str, smoother: "Tempo
 
         logger.info(
             f"[Stage 4] Gemini validated {len(validated_frames)}/{len(candidate_frames_for_audit)} "
-            f"CLIP candidates as true positives."
+            f"candidates as true positives."
         )
 
         if not validated_frames:
@@ -332,6 +340,10 @@ async def _run_search_pipeline(video_path: str, raw_query: str, smoother: "Tempo
         # Sort chronologically before feeding to TemporalSmoother — its
         # gap-bridging logic assumes non-decreasing timestamps.
         validated_frames.sort(key=lambda x: x["timestamp_seconds"])
+
+        # Adapt smoother frame gap limit to current sampling density
+        sample_interval = max(video_duration_sec / TARGET_FRAMES, 2.0)
+        smoother.frame_gap_limit = max(15.0, sample_interval * 2.5)
 
         smoother_input = [(f["timestamp_seconds"], f["confidence"]) for f in validated_frames]
         diagnostics = smoother.get_diagnostics(smoother_input)
