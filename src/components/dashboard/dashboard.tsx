@@ -183,6 +183,17 @@ export default function Dashboard() {
       formData.append('duration', dur.toString())
       formData.append('fileName', fileToSend.name)
 
+      let coldStartTimer: ReturnType<typeof setTimeout> | null = null
+      coldStartTimer = setTimeout(() => {
+        if (!abortController.signal.aborted) {
+          setProgress((prev) => ({
+            status: 'analyzing',
+            progress: 80,
+            message: 'Connecting to cloud AI engine (waking up server if idle)...',
+          }))
+        }
+      }, 5000)
+
       // Use the modern api.py endpoint, not the legacy heuristic mock endpoint!
       const response = await fetch(`${API_BASE_URL}/api/analyze`, {
         method: 'POST',
@@ -192,6 +203,7 @@ export default function Dashboard() {
 
       if (uploadTimer) clearTimeout(uploadTimer)
       if (extractTimer) clearTimeout(extractTimer)
+      if (coldStartTimer) clearTimeout(coldStartTimer)
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => ({}))

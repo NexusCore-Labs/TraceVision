@@ -92,10 +92,14 @@ export function AuditResults({
             </div>
             <div className="space-y-1 max-w-xs">
               <p className="text-xs font-medium text-foreground">
-                No audit queries executed.
+                {progress?.status === 'completed'
+                  ? 'No matching events found'
+                  : 'No audit queries executed'}
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Upload footage and submit an analysis query.
+                {progress?.status === 'completed'
+                  ? 'The AI analyzed all keyframes across the timeline and found no occurrences matching your query.'
+                  : 'Upload footage and submit an analysis query.'}
               </p>
             </div>
           </div>
