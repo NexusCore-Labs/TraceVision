@@ -121,13 +121,13 @@ export function VideoPlayer({
   return (
     <div className="flex flex-col gap-3">
       {/* Screen Viewport Frame */}
-      <div className="relative flex flex-col rounded-lg border border-border bg-[#05070a] overflow-hidden shadow-2xl">
+      <div className="relative flex flex-col rounded-md border border-[#25332f] bg-[#080d0b] overflow-hidden shadow-[0_16px_42px_-28px_rgba(14,32,26,0.65)]">
         {/* Top HUD Telemetry Overlay (pointer-events: none so it never intercepts user clicks) */}
         <div className="pointer-events-none absolute top-3 left-3 z-20 flex items-center gap-2">
           {videoUrl ? (
-            <span className="flex items-center gap-2 rounded bg-black/85 px-2.5 py-1 font-mono text-[11px] text-red-400 border border-red-500/40 backdrop-blur-md">
-              <span className={cn("size-1.5 rounded-full bg-red-500", isPlaying ? "animate-pulse" : "opacity-80")} />
-              {`${isPlaying ? 'LIVE STREAM' : 'PAUSED'} // ${videoName ? videoName.slice(0, 18) : 'CAM-01'}`}
+            <span className="flex items-center gap-2 rounded bg-black/80 px-2.5 py-1 font-mono text-[11px] text-white/85 border border-white/15">
+              <span className={cn("size-1.5 rounded-full bg-primary", isPlaying ? "animate-pulse" : "opacity-80")} />
+              {`${isPlaying ? 'PLAYING' : 'PAUSED'} / ${videoName ? videoName.slice(0, 18) : 'CAM-01'}`}
             </span>
           ) : (
             <span className="flex items-center gap-2 rounded bg-black/85 px-2.5 py-1 font-mono text-[11px] text-muted-foreground border border-border backdrop-blur-md">
@@ -139,8 +139,8 @@ export function VideoPlayer({
 
         <div className="pointer-events-none absolute top-3 right-3 z-20 flex items-center gap-2">
           {videoUrl ? (
-            <span className="flex items-center gap-1.5 rounded bg-black/85 px-2.5 py-1 font-mono text-[11px] text-primary border border-primary/40 backdrop-blur-md">
-              AI_TRACKING: {isPlaying ? 'STREAMING' : 'READY'}
+            <span className="flex items-center gap-1.5 rounded bg-black/80 px-2.5 py-1 font-mono text-[11px] text-[#a9e6d1] border border-white/15">
+              ANALYSIS / {isPlaying ? 'ACTIVE' : 'READY'}
             </span>
           ) : (
             <span className="flex items-center gap-1.5 rounded bg-black/85 px-2.5 py-1 font-mono text-[11px] text-muted-foreground border border-border backdrop-blur-md">
@@ -191,10 +191,10 @@ export function VideoPlayer({
                 <button
                   type="button"
                   onClick={onPlayPause}
-                  className="group absolute z-10 flex size-14 items-center justify-center rounded-full bg-primary/20 border border-primary/60 text-primary transition-all hover:scale-110 hover:bg-primary/30 active:scale-95 shadow-[0_0_25px_rgba(16,185,129,0.4)] cursor-pointer"
+                  className="group absolute z-10 flex size-14 items-center justify-center rounded-full bg-primary/90 border border-white/70 text-white transition-all hover:scale-105 hover:bg-primary active:scale-95 cursor-pointer"
                   aria-label="Play Video"
                 >
-                  <Play className="size-6 translate-x-0.5 fill-primary/30" />
+                  <Play className="size-6 translate-x-0.5 fill-white/20" />
                 </button>
               )}
 
@@ -259,7 +259,7 @@ export function VideoPlayer({
         </div>
 
         {/* Bottom Hardware Control Bar */}
-        <div className="flex h-11 items-center justify-between px-3 border-t border-border bg-card">
+        <div className="flex h-11 items-center justify-between px-3 border-t border-[#25332f] bg-[#101714] text-white">
           <div className="flex items-center gap-3">
             <button
               onClick={onPlayPause}
@@ -296,7 +296,7 @@ export function VideoPlayer({
       </div>
 
       {/* Timeline Controls */}
-      <div className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-lg">
+      <div className="flex flex-col gap-2 rounded-md border border-border bg-card p-3 shadow-sm">
         <div className="flex items-center justify-between">
           <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
             Timeline Index

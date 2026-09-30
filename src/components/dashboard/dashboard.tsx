@@ -7,7 +7,7 @@ import { QueryBar } from './query-bar'
 import { VideoPlayer } from './video-player'
 import { AuditResults } from './audit-results'
 import { AuditMatch, TimelineMarker, AnalysisProgress, AuditResponse } from '@/types/audit'
-import { ShieldCheck, RotateCcw } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 
 // Direct-to-Render backend URL.
 // The browser uploads straight to Render — bypassing Vercel entirely and
@@ -249,30 +249,25 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] text-slate-900 flex flex-col font-sans selection:bg-blue-100 selection:text-blue-900">
-      {/* 1. Integrated Header */}
-      <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-xl border-b border-slate-200/90 shadow-[0_4px_20px_rgba(0,0,0,0.03)] px-6 lg:px-10 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-3 group">
-          <div className="relative w-7 h-7 flex items-center justify-center rounded-lg overflow-hidden shrink-0 shadow-sm bg-slate-900">
-            <Image
-              src="/tracevision-icon.svg"
-              alt="TraceVision Icon"
-              width={28}
-              height={28}
-              className="object-contain"
-              priority
-            />
-          </div>
-          <span className="text-sm font-bold tracking-wider uppercase text-slate-800 group-hover:text-blue-700 transition-colors">
-            TraceVision
-          </span>
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
+      <header className="sticky top-0 z-50 border-b border-border bg-white/95 px-4 sm:px-6 lg:px-10 h-16 flex items-center justify-between">
+        <Link href="/" className="brand-link group flex items-center gap-3">
+          <Image
+            src="/tracevision-icon.svg"
+            alt=""
+            width={36}
+            height={36}
+            className="brand-mark"
+            priority
+          />
+          <span className="brand-wordmark">Trace<span>Vision</span></span>
         </Link>
 
         <div className="flex items-center gap-3">
           {videoUrl && (
             <button
               onClick={handleReset}
-              className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg shadow-2xs hover:bg-slate-50 transition cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground bg-white border border-border rounded-md hover:bg-muted transition cursor-pointer"
               title="Reset Video and Search"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -280,15 +275,23 @@ export default function Dashboard() {
             </button>
           )}
 
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium text-slate-700 bg-white/60 border border-slate-200 shadow-2xs">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-            Console Active
+          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-medium text-secondary-foreground bg-secondary border border-[#d6e8df]">
+            <span className="size-1.5 rounded-full bg-primary" />
+            Secure workspace
           </span>
         </div>
       </header>
 
-      {/* 2. Main Workbench Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-4">
+      <main className="flex-1 max-w-[1480px] w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 lg:py-8 space-y-5">
+        <div className="flex flex-col gap-2 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary">Video intelligence / workspace</p>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">Investigation console</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Search footage, inspect matching moments, and review the evidence.</p>
+          </div>
+          <span className="font-mono text-[11px] text-muted-foreground">LOCAL SESSION <span className="text-foreground">/ READY</span></span>
+        </div>
+
         <QueryBar
           onAnalyze={handleAnalyze}
           onFileUpload={handleFileUpload}
@@ -298,7 +301,7 @@ export default function Dashboard() {
           currentFileName={videoFile?.name}
         />
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_380px] items-start">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
           <div className="w-full">
             <VideoPlayer
               videoUrl={videoUrl}
@@ -319,7 +322,7 @@ export default function Dashboard() {
             />
           </div>
 
-          <div className="w-full sticky top-20">
+          <div className="w-full xl:sticky xl:top-20">
             <AuditResults
               matches={matches}
               isProcessing={isProcessing}

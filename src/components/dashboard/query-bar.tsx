@@ -54,7 +54,7 @@ export function QueryBar({
     <div className="flex flex-col gap-3 md:flex-row items-stretch">
       {/* Search / Analysis Query Bar */}
       <form
-        className="relative flex flex-1 items-center gap-2 rounded-lg border border-border bg-card p-1.5 shadow-[0_0_0_1px_rgba(0,0,0,0.2)] focus-within:ring-2 focus-within:ring-primary/40"
+        className="relative flex flex-1 items-center gap-2 rounded-md border border-border bg-card p-1.5 shadow-sm focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/15"
         onSubmit={handleSubmit}
       >
         <Search
@@ -91,7 +91,7 @@ export function QueryBar({
           type="submit"
           disabled={isProcessing || !query.trim() || !hasVideo}
           className={cn(
-            'flex shrink-0 items-center gap-2 rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-[0_0_20px_-4px_var(--primary)] transition-all hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40',
+            'flex shrink-0 items-center gap-2 rounded-md bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-[#0f6c5a] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40',
           )}
         >
           {isProcessing ? (
@@ -111,10 +111,10 @@ export function QueryBar({
         className={cn(
           'flex shrink-0 cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm transition-colors md:w-80 select-none',
           isDragging
-            ? 'border-primary bg-primary/10 text-primary'
+            ? 'border-primary bg-secondary text-primary'
             : currentFileName
-              ? 'border-primary/40 bg-card text-foreground hover:border-primary/60'
-              : 'border-dashed border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground',
+              ? 'border-primary/40 bg-white text-foreground hover:border-primary/60'
+              : 'border-dashed border-border bg-white text-muted-foreground hover:border-primary/50 hover:text-foreground',
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
